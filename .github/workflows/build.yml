@@ -1,0 +1,59 @@
+name: Build Click Helper
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build portable release
+        run: python build_release.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClickHelper-Release
+          path: |
+            dist/ClickHelper.exe
+            release/*.zip
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ClickHelper-Release
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Click Helper ${{ github.ref_name }}
+          body: |
+            Portable Auto-Clicker für Windows – keine Installation nötig.
+
+            **Download:** ZIP entpacken und `ClickHelper.exe` starten.
+            Bei Bedarf als Administrator ausführen (globale Hotkeys).
+
+            Details: siehe README im Repository.
+          files: |
+            release/*.zip
+            dist/ClickHelper.exe
+          draft: false
+          prerelease: false

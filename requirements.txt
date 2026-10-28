@@ -1,0 +1,11 @@
+# GUI: tkinter (mitgeliefert mit Python, kein Extra-Paket)
+
+# Hotkey und Eingabe-Verwaltung
+keyboard==0.13.5
+pyautogui==0.9.54
+
+# Windows-API für schnelle Klicks / Fenster
+pywin32==311
+
+# System- und Prozess-Überwachung
+psutil==5.9.5

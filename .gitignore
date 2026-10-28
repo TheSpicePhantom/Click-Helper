@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Build / Release
+build/
+dist/
+release/
+*.spec.bak
+
+# Lokale Laufzeitdaten (nicht versionieren)
+click_helper_settings.json
+hotkeys.json
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+Desktop.ini
