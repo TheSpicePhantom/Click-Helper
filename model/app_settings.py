@@ -9,6 +9,7 @@ from typing import Optional
 
 
 SETTINGS_FILE = "click_helper_settings.json"
+GITHUB_REPO_URL = "https://github.com/TheSpicePhantom/Click-Helper"
 
 
 def get_app_base_dir() -> Path:

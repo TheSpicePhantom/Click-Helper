@@ -1,6 +1,10 @@
 # Click Helper
 
+Deutsch · **[English](README_EN.md)**
+
 Schlanker, portabler Auto-Clicker für Windows.
+
+Repository: https://github.com/TheSpicePhantom/Click-Helper
 
 ---
 
@@ -31,9 +35,11 @@ Bibliotheken wie `pyautogui` sind praktisch, aber für hohe Klickraten spürbar 
 
 `pyautogui` kommt nur noch dort zum Einsatz, wo es nötig ist (z. B. Text-Hotkeys), nicht für den Kern-Clicker.
 
-### Open Source
+### Quellcode offen (Source-Available)
 
-Click Helper ist **Open Source**. Der vollständige Quellcode liegt im Repository; Build, Architektur und Verhalten sind nachvollziehbar und anpassbar. Es gibt keinen Closed-Source-Kern und keine versteckten Online-Komponenten.
+Der vollständige Quellcode liegt öffentlich im Repository; Build, Architektur und Verhalten sind nachvollziehbar. Es gibt keinen Closed-Source-Kern und keine Online-Telemetrie.
+
+**Wichtig:** Das ist bewusst **keine** klassische OSI-Open-Source-Lizenz. Privat nutzen: ja. Kommerzieller Vertrieb und Verkauf: nein (außer schriftliche Genehmigung). Änderungen, die du weitergibst: nur als öffentlicher Fork mit Link zum Original-Repository. Details: [LICENSE](LICENSE).
 
 ---
 
@@ -108,6 +114,8 @@ Oben rechts **⚙**:
 | Tray-Linksklick / Menü „Anzeigen“ | Fenster wieder sichtbar |
 | Tray „Beenden“ oder **Strg+Q** | Anwendung beenden |
 
+Der **GitHub**-Button in der Kopfzeile öffnet das öffentliche Repository (Quellcode, README, Lizenz).
+
 ---
 
 ## Daten und Privatsphäre
@@ -147,7 +155,7 @@ Technischer Stack (Runtime):
 Voraussetzungen: Windows 10/11, Python 3.10+ (empfohlen).
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/TheSpicePhantom/Click-Helper.git
 cd Click-Helper
 pip install -r requirements.txt
 python main.py
@@ -172,12 +180,26 @@ python build_release.py --skip-deps
 
 ---
 
-## Mitwirken / Open Source
+## Mitwirken
 
-Verbesserungen, Bugfixes und Ideen sind willkommen. Der Code ist offen einsehbar und soll nachvollziehbar bleiben: wenig Magie, klare Schichten, portable Distribution.
+Verbesserungen und Bugfixes sind willkommen – bitte als **öffentlicher Fork** von  
+https://github.com/TheSpicePhantom/Click-Helper  
+mit erkennbarem Link zum Original-Repository. Wenig Magie, klare Schichten, portable Distribution.
 
 ---
 
 ## Lizenz
 
-Open Source – siehe Repository-Lizenzdatei, sofern vorhanden. Nutzung auf eigene Verantwortung.
+Click Helper steht unter der **Click Helper Source-Available License** – siehe [LICENSE](LICENSE) (Deutsch + Englisch).
+
+Kurzfassung (rechtlich gilt der volle Lizenztext):
+
+| | |
+|--|--|
+| Quellcode einsehen | erlaubt |
+| Private / nicht kommerzielle Nutzung | erlaubt |
+| Kommerzieller Vertrieb / Verkauf | **verboten**, außer ausdrückliche **schriftliche** Genehmigung |
+| Weitergegebene Änderungen | nur als **öffentlicher Fork** + Link zum Original-Repo |
+| Haftung bei Missbrauch | **keine** – Nutzung auf eigene Gefahr |
+
+Original-Repository: https://github.com/TheSpicePhantom/Click-Helper

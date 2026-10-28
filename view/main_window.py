@@ -1,14 +1,15 @@
 """
-Hauptfenster – Zahnrad für Speicherort, X/Minimieren → Tray.
+Hauptfenster – Zahnrad für Speicherort, GitHub-Link, X/Minimieren → Tray.
 """
 
 import os
 import subprocess
 import tkinter as tk
+import webbrowser
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from model.app_settings import default_data_dir
+from model.app_settings import GITHUB_REPO_URL, default_data_dir
 from model.resources import resource_path
 from .hotkey_tab import HotkeyTab
 
@@ -41,6 +42,7 @@ class MainWindow:
             side=tk.LEFT
         )
 
+        # Rechts: Zahnrad; GitHub-Symbol links davon (pack side=RIGHT)
         self.gear_btn = ttk.Button(
             header,
             text="⚙",
@@ -48,7 +50,33 @@ class MainWindow:
             command=self._show_storage_settings,
         )
         self.gear_btn.pack(side=tk.RIGHT)
-        self._set_gear_tooltip("Speicherort")
+        self._set_tooltip(self.gear_btn, "Speicherort")
+
+        self._github_img = None
+        gh_icon = resource_path("github.png")
+        if gh_icon.exists():
+            try:
+                self._github_img = tk.PhotoImage(file=str(gh_icon))
+                # ttk.Button zeigt Images zuverlässig mit compound
+                self.github_btn = ttk.Button(
+                    header,
+                    image=self._github_img,
+                    width=3,
+                    command=self._open_github,
+                )
+            except Exception:
+                self._github_img = None
+                self.github_btn = ttk.Button(
+                    header, text="GitHub", command=self._open_github
+                )
+        else:
+            self.github_btn = ttk.Button(
+                header, text="GitHub", command=self._open_github
+            )
+        self.github_btn.pack(side=tk.RIGHT, padx=(0, 6))
+        self._set_tooltip(
+            self.github_btn, "Quellcode, README & Lizenz auf GitHub"
+        )
 
         self.hotkey_tab = HotkeyTab(frame)
         self.hotkey_tab.pack(fill=tk.BOTH, expand=True)
@@ -66,14 +94,23 @@ class MainWindow:
     def set_data_dir_changed_callback(self, callback):
         self.on_data_dir_changed = callback
 
-    def _set_gear_tooltip(self, text: str):
+    def _open_github(self):
+        try:
+            webbrowser.open(GITHUB_REPO_URL)
+        except Exception as e:
+            messagebox.showerror(
+                "GitHub",
+                f"Link konnte nicht geöffnet werden:\n{GITHUB_REPO_URL}\n\n{e}",
+            )
+
+    def _set_tooltip(self, widget, text: str):
         tip = {"win": None}
 
         def show(_event):
             if tip["win"] is not None:
                 return
-            x = self.gear_btn.winfo_rootx()
-            y = self.gear_btn.winfo_rooty() + self.gear_btn.winfo_height() + 4
+            x = widget.winfo_rootx()
+            y = widget.winfo_rooty() + widget.winfo_height() + 4
             win = tk.Toplevel(self.root)
             win.wm_overrideredirect(True)
             win.wm_geometry(f"+{x}+{y}")
@@ -85,8 +122,8 @@ class MainWindow:
                 tip["win"].destroy()
                 tip["win"] = None
 
-        self.gear_btn.bind("<Enter>", show)
-        self.gear_btn.bind("<Leave>", hide)
+        widget.bind("<Enter>", show)
+        widget.bind("<Leave>", hide)
 
     def _show_storage_settings(self):
         path = self.data_dir or default_data_dir()
