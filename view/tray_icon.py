@@ -10,7 +10,7 @@ from model.resources import resource_path
 
 
 class TrayIcon:
-    """Tray-Icon mit Menü Anzeigen / Beenden."""
+    """Tray icon with Show / Exit menu."""
 
     WM_TRAY = win32con.WM_USER + 20
 
@@ -163,8 +163,8 @@ class TrayIcon:
         if not self._hwnd:
             return
         menu = win32gui.CreatePopupMenu()
-        win32gui.AppendMenu(menu, win32con.MF_STRING, 1001, "Anzeigen")
-        win32gui.AppendMenu(menu, win32con.MF_STRING, 1002, "Beenden")
+        win32gui.AppendMenu(menu, win32con.MF_STRING, 1001, "Show")
+        win32gui.AppendMenu(menu, win32con.MF_STRING, 1002, "Exit")
         pos = win32gui.GetCursorPos()
         try:
             win32gui.SetForegroundWindow(self._hwnd)

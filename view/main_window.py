@@ -22,8 +22,8 @@ class MainWindow:
         self.settings = None
         self.on_data_dir_changed = None
         self.root.title("Click Helper")
-        self.root.geometry("720x560")
-        self.root.minsize(560, 420)
+        self.root.geometry("760x620")
+        self.root.minsize(620, 480)
 
         icon = resource_path("icon.png")
         if icon.exists():
@@ -32,58 +32,52 @@ class MainWindow:
             except Exception:
                 pass
 
-        frame = ttk.Frame(self.root, padding=6)
+        frame = ttk.Frame(self.root, padding=10)
         frame.pack(fill=tk.BOTH, expand=True)
 
         header = ttk.Frame(frame)
-        header.pack(fill=tk.X, pady=(0, 4))
+        header.pack(fill=tk.X, pady=(0, 8))
 
-        ttk.Label(header, text="Click Helper", font=("Segoe UI", 14, "bold")).pack(
-            side=tk.LEFT
+        titles = ttk.Frame(header)
+        titles.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Label(titles, text="Click Helper", font=("Segoe UI", 16, "bold")).pack(
+            anchor=tk.W
         )
+        ttk.Label(
+            titles,
+            text="Lightweight auto-clicker & text hotkeys for Windows",
+            foreground="gray",
+        ).pack(anchor=tk.W)
 
-        # Rechts: Zahnrad; GitHub-Symbol links davon (pack side=RIGHT)
-        self.gear_btn = ttk.Button(
+        # Equal-size icon buttons (GitHub left of gear)
+        self._header_imgs = []
+        gh_box, self.github_btn = self._make_header_icon_button(
             header,
-            text="⚙",
-            width=3,
+            icon_name="github.png",
+            fallback_text="GH",
+            command=self._open_github,
+        )
+        gear_box, self.gear_btn = self._make_header_icon_button(
+            header,
+            icon_name="gear.png",
+            fallback_text="⚙",
             command=self._show_storage_settings,
         )
-        self.gear_btn.pack(side=tk.RIGHT)
-        self._set_tooltip(self.gear_btn, "Speicherort")
-
-        self._github_img = None
-        gh_icon = resource_path("github.png")
-        if gh_icon.exists():
-            try:
-                self._github_img = tk.PhotoImage(file=str(gh_icon))
-                # ttk.Button zeigt Images zuverlässig mit compound
-                self.github_btn = ttk.Button(
-                    header,
-                    image=self._github_img,
-                    width=3,
-                    command=self._open_github,
-                )
-            except Exception:
-                self._github_img = None
-                self.github_btn = ttk.Button(
-                    header, text="GitHub", command=self._open_github
-                )
-        else:
-            self.github_btn = ttk.Button(
-                header, text="GitHub", command=self._open_github
-            )
-        self.github_btn.pack(side=tk.RIGHT, padx=(0, 6))
+        gear_box.pack(side=tk.RIGHT)
+        gh_box.pack(side=tk.RIGHT, padx=(0, 6))
+        self._set_tooltip(self.gear_btn, "Where your hotkeys are saved")
         self._set_tooltip(
-            self.github_btn, "Quellcode, README & Lizenz auf GitHub"
+            self.github_btn, "Open source code, README & license on GitHub"
         )
 
         self.hotkey_tab = HotkeyTab(frame)
         self.hotkey_tab.pack(fill=tk.BOTH, expand=True)
 
         ttk.Label(
-            frame, text="X / Minimieren → Tray · Strg+Q oder Tray beendet", foreground="gray"
-        ).pack(anchor=tk.W, pady=(4, 0))
+            frame,
+            text="Tip: Close or minimize to keep running in the tray · Ctrl+Q or tray → Exit to quit",
+            foreground="gray",
+        ).pack(anchor=tk.W, pady=(8, 0))
 
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self.root.bind("<Unmap>", self._on_unmap)
@@ -94,13 +88,35 @@ class MainWindow:
     def set_data_dir_changed_callback(self, callback):
         self.on_data_dir_changed = callback
 
+    def _make_header_icon_button(self, parent, *, icon_name: str, fallback_text: str, command):
+        """Square header control – same pixel size for GitHub and gear."""
+        size = 28
+        box = ttk.Frame(parent, width=size, height=size)
+        box.pack_propagate(False)
+
+        img = None
+        path = resource_path(icon_name)
+        if path.exists():
+            try:
+                img = tk.PhotoImage(file=str(path))
+                self._header_imgs.append(img)
+            except Exception:
+                img = None
+
+        if img is not None:
+            btn = ttk.Button(box, image=img, command=command)
+        else:
+            btn = ttk.Button(box, text=fallback_text, command=command)
+        btn.pack(fill=tk.BOTH, expand=True)
+        return box, btn
+
     def _open_github(self):
         try:
             webbrowser.open(GITHUB_REPO_URL)
         except Exception as e:
             messagebox.showerror(
                 "GitHub",
-                f"Link konnte nicht geöffnet werden:\n{GITHUB_REPO_URL}\n\n{e}",
+                f"Could not open link:\n{GITHUB_REPO_URL}\n\n{e}",
             )
 
     def _set_tooltip(self, widget, text: str):
@@ -129,22 +145,28 @@ class MainWindow:
         path = self.data_dir or default_data_dir()
 
         dialog = tk.Toplevel(self.root)
-        dialog.title("Speicherort")
+        dialog.title("Save location")
         dialog.transient(self.root)
         dialog.grab_set()
         dialog.resizable(False, False)
 
-        frame = ttk.Frame(dialog, padding=12)
+        frame = ttk.Frame(dialog, padding=14)
         frame.pack(fill=tk.BOTH, expand=True)
 
         ttk.Label(
             frame,
-            text="Ordner für hotkeys.json (portabel verschiebbar):",
+            text="Your hotkeys are stored in this folder",
+            font=("Segoe UI", 10, "bold"),
         ).pack(anchor=tk.W)
+        ttk.Label(
+            frame,
+            text="You can move this folder anytime (e.g. onto a USB drive).",
+            foreground="gray",
+        ).pack(anchor=tk.W, pady=(0, 8))
 
         path_var = tk.StringVar(value=str(path))
         entry = ttk.Entry(frame, textvariable=path_var, width=56, state="readonly")
-        entry.pack(fill=tk.X, pady=(6, 10))
+        entry.pack(fill=tk.X, pady=(0, 10))
 
         btns = ttk.Frame(frame)
         btns.pack(fill=tk.X)
@@ -152,7 +174,7 @@ class MainWindow:
         def choose_folder():
             chosen = filedialog.askdirectory(
                 parent=dialog,
-                title="Datenordner wählen",
+                title="Choose folder for your hotkeys",
                 initialdir=str(path),
             )
             if not chosen:
@@ -165,12 +187,12 @@ class MainWindow:
                 else:
                     path_var.set(str(new_path))
                 messagebox.showinfo(
-                    "Speicherort",
-                    f"Neuer Ordner wird dauerhaft verwendet:\n{path_var.get()}",
+                    "Save location",
+                    f"Hotkeys will now be saved here:\n{path_var.get()}",
                     parent=dialog,
                 )
             except Exception as e:
-                messagebox.showerror("Fehler", str(e), parent=dialog)
+                messagebox.showerror("Error", str(e), parent=dialog)
 
         def open_folder():
             self._open_path(Path(path_var.get()))
@@ -178,8 +200,8 @@ class MainWindow:
         def reset_default():
             default = default_data_dir()
             if not messagebox.askyesno(
-                "Standard",
-                f"Auf Standard zurücksetzen?\n\n{default}",
+                "Reset",
+                f"Use the default folder again?\n\n{default}",
                 parent=dialog,
             ):
                 return
@@ -190,14 +212,14 @@ class MainWindow:
                 else:
                     path_var.set(str(default))
             except Exception as e:
-                messagebox.showerror("Fehler", str(e), parent=dialog)
+                messagebox.showerror("Error", str(e), parent=dialog)
 
-        ttk.Button(btns, text="Ordner ändern…", command=choose_folder).pack(side=tk.LEFT)
-        ttk.Button(btns, text="Im Explorer öffnen", command=open_folder).pack(
+        ttk.Button(btns, text="Change folder…", command=choose_folder).pack(side=tk.LEFT)
+        ttk.Button(btns, text="Open folder", command=open_folder).pack(
             side=tk.LEFT, padx=6
         )
-        ttk.Button(btns, text="Standard", command=reset_default).pack(side=tk.LEFT)
-        ttk.Button(btns, text="Schließen", command=dialog.destroy).pack(side=tk.RIGHT)
+        ttk.Button(btns, text="Use default", command=reset_default).pack(side=tk.LEFT)
+        ttk.Button(btns, text="Close", command=dialog.destroy).pack(side=tk.RIGHT)
 
         dialog.wait_window()
 
@@ -209,7 +231,7 @@ class MainWindow:
             try:
                 subprocess.Popen(["explorer", str(path)])
             except Exception as e:
-                messagebox.showerror("Fehler", f"Ordner konnte nicht geöffnet werden:\n{e}")
+                messagebox.showerror("Error", f"Could not open folder:\n{e}")
 
     def set_hide_callback(self, callback):
         self.hide_callback = callback

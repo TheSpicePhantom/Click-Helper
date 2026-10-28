@@ -20,11 +20,31 @@ BUILD = ROOT / "build"
 RELEASE = ROOT / "release"
 SPEC = ROOT / "ClickHelper.spec"
 EXE_NAME = "ClickHelper.exe"
+LICENSE_NAME = "LICENSE"
+README_NAME = "README.txt"
 
 
 def run(cmd: list[str]) -> None:
     print(">", " ".join(cmd))
     subprocess.check_call(cmd, cwd=str(ROOT))
+
+
+def ensure_license() -> Path:
+    """LICENSE muss existieren und mit in EXE + ZIP."""
+    path = ROOT / LICENSE_NAME
+    if not path.is_file() or path.stat().st_size == 0:
+        raise FileNotFoundError(
+            f"{LICENSE_NAME} fehlt oder ist leer – "
+            "ohne Lizenzdatei kein Shipping-Build (Haftungsausschluss)."
+        )
+    text = path.read_text(encoding="utf-8")
+    if "KEINE HAFTUNG" not in text.upper() and "NO WARRANTY" not in text.upper():
+        print(
+            f"WARNUNG: {LICENSE_NAME} enthält keinen klaren Haftungsausschluss "
+            "(KEINE HAFTUNG / NO WARRANTY)."
+        )
+    print(f"OK Lizenz: {path.name} ({path.stat().st_size} Bytes)")
+    return path
 
 
 def ensure_deps(with_pillow: bool = True) -> None:
@@ -88,33 +108,46 @@ def write_readme(target: Path) -> None:
     text = f"""Click Helper v{VERSION}
 ====================
 
-Portable Auto-Clicker für Windows (keine Installation nötig).
+Portable auto-clicker for Windows (no installation required).
+
+LICENSE / Disclaimer
+--------------------
+Use of this software is subject to the LICENSE file in this folder
+(Click Helper Source-Available License).
+
+THE SOFTWARE IS PROVIDED WITHOUT WARRANTY OF ANY KIND.
+The author / copyright holder is not liable for damages, misuse,
+or illegal use. Use at your own risk and responsibility.
+
+Full text: LICENSE (German + English)
+Repository: https://github.com/TheSpicePhantom/Click-Helper
 
 Start
 -----
-1. ClickHelper.exe starten
-2. Bei Bedarf: Rechtsklick → Als Administrator ausführen
-   (globale Hotkeys brauchen oft Admin-Rechte)
+1. Run ClickHelper.exe
+2. If needed: Right-click → Run as administrator
+   (global hotkeys on Windows often need admin rights)
 
-Bedienung
----------
-- Hotkey aufnehmen und hinzufügen
-- Rechtsklick auf Eintrag: Konfigurieren / Löschen
-- Zahnrad oben rechts: Speicherort für hotkeys.json wählen
-- X / Minimieren: in den Infobereich (Tray)
-- Strg+Q oder Tray → Beenden: App beenden
-
-Daten
+Usage
 -----
-Standard: Dokumente\\Click-Helper\\hotkeys.json
-Optional: anderer Ordner über das Zahnrad (wird neben der EXE gemerkt).
+- Record a hotkey and add it
+- Right-click a row: Configure / Delete
+- Gear (top right): choose folder for hotkeys.json
+- GitHub button: source, README, and license online
+- X / Minimize: hide to the notification area (tray)
+- Ctrl+Q or tray → Exit: quit the app
+
+Data
+----
+Default: Documents\\Click-Helper\\hotkeys.json
+Optional: another folder via the gear (stored next to the EXE).
 
 Version: {VERSION}
 """
     target.write_text(text, encoding="utf-8")
 
 
-def package_release(exe: Path) -> Path:
+def package_release(exe: Path, license_path: Path) -> Path:
     RELEASE.mkdir(exist_ok=True)
     folder_name = f"ClickHelper-v{VERSION}-portable"
     out_dir = RELEASE / folder_name
@@ -123,13 +156,14 @@ def package_release(exe: Path) -> Path:
     out_dir.mkdir(parents=True)
 
     shutil.copy2(exe, out_dir / EXE_NAME)
-    write_readme(out_dir / "README.txt")
+    shutil.copy2(license_path, out_dir / LICENSE_NAME)
+    write_readme(out_dir / README_NAME)
 
     zip_path = RELEASE / f"{folder_name}.zip"
     if zip_path.exists():
         zip_path.unlink()
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for file in out_dir.iterdir():
+        for file in sorted(out_dir.iterdir()):
             zf.write(file, arcname=f"{folder_name}/{file.name}")
 
     return zip_path
@@ -146,10 +180,12 @@ def print_summary(exe: Path, zip_path: Path) -> None:
     print(f"ZIP : {zip_path}  ({zip_mb:.1f} MB)")
     print()
     print("Inhalt ZIP:")
-    print("  ClickHelper.exe")
-    print("  README.txt")
+    print(f"  {EXE_NAME}")
+    print(f"  {LICENSE_NAME}   ← Haftungsausschluss / Nutzungsbedingungen")
+    print(f"  {README_NAME}")
     print()
     print("Zum Verteilen: ZIP weitergeben – keine Installation nötig.")
+    print("LICENSE ist zusätzlich in der EXE eingebettet (PyInstaller datas).")
 
 
 def main() -> int:
@@ -172,6 +208,7 @@ def main() -> int:
     try:
         if not args.skip_deps:
             ensure_deps()
+        license_path = ensure_license()
         ensure_icon_ico()
         clean()
         if args.no_clean_build:
@@ -182,7 +219,7 @@ def main() -> int:
                 raise FileNotFoundError(exe)
         else:
             exe = build_exe()
-        zip_path = package_release(exe)
+        zip_path = package_release(exe, license_path)
         print_summary(exe, zip_path)
         return 0
     except subprocess.CalledProcessError as e:

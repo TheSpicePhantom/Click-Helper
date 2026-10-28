@@ -12,7 +12,7 @@ from model.auto_clicker import AutoClickerThread
 from model.hotkey_manager import HotkeyManager, normalize_hotkey_name
 from model.logger_service import get_logger
 from model.process_manager import ProcessManager
-from view.hotkey_tab import HotkeyTab
+from view.hotkey_tab import FUNC_TEXT, HotkeyTab
 
 
 class HotkeyAdapter:
@@ -23,7 +23,7 @@ class HotkeyAdapter:
 
         data_dir = hotkey_tab.get_data_directory()
         if data_dir is None:
-            raise ValueError("Datenverzeichnis muss vor Adapter-Erstellung gesetzt sein")
+            raise ValueError("Data directory must be set before creating the adapter")
 
         self.hotkey_manager = HotkeyManager(data_dir)
         self.process_manager = ProcessManager()
@@ -63,28 +63,29 @@ class HotkeyAdapter:
         function = self.hotkey_tab.get_function_type()
 
         if not hotkey:
-            messagebox.showwarning("Fehler", "Bitte Hotkey aufnehmen.")
+            messagebox.showwarning("Missing hotkey", "Click the hotkey field and press your keys first.")
             return
         if self.hotkey_manager.hotkey_exists(hotkey):
             messagebox.showwarning(
-                "Doppelbelegung",
-                f"„{hotkey}“ ist bereits vergeben.\nBitte anderen Hotkey wählen.",
+                "Already in use",
+                f'"{hotkey}" is already assigned.\nChoose a different key combination.',
             )
             return
 
         restrictions = self.hotkey_tab.get_window_restrictions()
 
-        if function == "Text eingeben":
+        if function == FUNC_TEXT:
             text = self.hotkey_tab.get_text_input()
             if not text:
-                messagebox.showwarning("Fehler", "Bitte Text eingeben.")
+                messagebox.showwarning("Missing text", "Enter the text this hotkey should type.")
                 return
             data = {"type": "text", "data": text, "conditions": restrictions}
         else:
             cps = self.hotkey_tab.get_cps_value()
             button = self.hotkey_tab.get_button_value() or "left"
             if cps > 20 and not messagebox.askyesno(
-                "Warnung", f"{cps} CPS ist sehr schnell. Fortfahren?"
+                "Very fast",
+                f"{cps} clicks per second is very fast and may stress your system.\nContinue anyway?",
             ):
                 return
             data = {
@@ -103,7 +104,7 @@ class HotkeyAdapter:
             if restrictions.get("window_restriction"):
                 self._maybe_start_monitor()
         else:
-            messagebox.showwarning("Fehler", "Hotkey konnte nicht hinzugefügt werden.")
+            messagebox.showwarning("Error", "Could not add hotkey.")
 
     def remove_hotkey(self, hotkey):
         hotkey = normalize_hotkey_name(hotkey)
@@ -113,19 +114,19 @@ class HotkeyAdapter:
         if self.hotkey_manager.remove_hotkey(hotkey):
             self.update_view()
         else:
-            messagebox.showwarning("Fehler", "Hotkey konnte nicht entfernt werden.")
+            messagebox.showwarning("Error", "Could not remove hotkey.")
 
     def configure_hotkey(self, hotkey: str, *, cps: float = None, trigger: str = None):
-        """CPS und/oder Trigger ändern; Taste bleibt."""
+        """Change CPS and/or trigger; the key binding stays."""
         hotkey = normalize_hotkey_name(hotkey)
         data = self.hotkey_manager.get_hotkey(hotkey)
         if not data:
-            messagebox.showwarning("Fehler", "Hotkey nicht gefunden.")
+            messagebox.showwarning("Error", "Hotkey not found.")
             return False
         if data.get("type") != "clicker":
             messagebox.showinfo(
-                "Konfigurieren",
-                "CPS und Umschalten/Halten gelten nur für Auto-Clicker.",
+                "Edit",
+                "Speed and mode can only be changed for auto-clicker hotkeys.",
             )
             return False
 
@@ -142,7 +143,7 @@ class HotkeyAdapter:
         if not self.hotkey_manager.update_clicker(
             hotkey, interval=interval, trigger=trigger
         ):
-            messagebox.showwarning("Fehler", "Konfiguration ungültig.")
+            messagebox.showwarning("Error", "Invalid configuration.")
             stored = self.hotkey_manager.get_hotkey(hotkey)
             if stored:
                 self.register_hotkey(hotkey, stored)
@@ -216,7 +217,7 @@ class HotkeyAdapter:
                     hotkey, lambda h=hotkey, d=data: self.handle_clicker_action(h, d)
                 )
         except Exception as e:
-            messagebox.showwarning("Fehler", f"Registrierung fehlgeschlagen: {e}")
+            messagebox.showwarning("Error", f"Registration failed: {e}")
 
     def register_all_hotkeys(self):
         for hotkey, data in self.hotkey_manager.get_all_hotkeys().items():

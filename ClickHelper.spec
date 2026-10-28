@@ -11,6 +11,8 @@ a = Analysis(
         ('icon.ico', '.'),
         ('icon.png', '.'),
         ('github.png', '.'),
+        ('gear.png', '.'),
+        ('LICENSE', '.'),
     ],
     hiddenimports=[
         'tkinter',

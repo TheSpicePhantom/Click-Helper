@@ -1,5 +1,5 @@
 """
-Hotkey-Tab – Kontextmenü statt Import/Export.
+Hotkey tab – clear form flow for end users.
 """
 
 import tkinter as tk
@@ -7,7 +7,25 @@ from tkinter import messagebox, simpledialog, ttk
 
 import keyboard
 
-PLACEHOLDER = "Klicken zum Aufnehmen…"
+PLACEHOLDER = "Click here, then press your keys…"
+RECORDING_HINT = "Listening… (ESC cancels)"
+FUNC_TEXT = "Type text"
+FUNC_CLICKER = "Auto-clicker"
+
+MODE_TOGGLE = "Toggle — press once to start, again to stop"
+MODE_HOLD = "Hold — clicks only while the key is held"
+MODE_TOGGLE_SHORT = "Toggle"
+MODE_HOLD_SHORT = "Hold"
+
+BUTTON_OPTIONS = [
+    ("Left", "left"),
+    ("Right", "right"),
+    ("Middle", "middle"),
+]
+BUTTON_LABELS = {code: label for label, code in BUTTON_OPTIONS}
+BUTTON_CODES = {label: code for label, code in BUTTON_OPTIONS}
+
+LABEL_W = 12
 
 
 class HotkeyTab(ttk.Frame):
@@ -32,121 +50,169 @@ class HotkeyTab(ttk.Frame):
     def get_data_directory(self):
         return self.data_dir
 
-    def _build(self):
-        form = ttk.LabelFrame(self, text="Neuer Hotkey", padding=8)
-        form.pack(fill=tk.X, padx=4, pady=4)
+    def _labeled_row(self, parent, label_text: str) -> ttk.Frame:
+        row = ttk.Frame(parent)
+        row.pack(fill=tk.X, pady=3)
+        ttk.Label(row, text=label_text, width=LABEL_W, anchor=tk.W).pack(side=tk.LEFT)
+        return row
 
-        row = ttk.Frame(form)
-        row.pack(fill=tk.X, pady=2)
-        ttk.Label(row, text="Hotkey:").pack(side=tk.LEFT)
+    def _build(self):
+        form = ttk.LabelFrame(self, text="Create a hotkey", padding=10)
+        form.pack(fill=tk.X, padx=4, pady=(0, 6))
+
+        ttk.Label(
+            form,
+            text="1. Record a key  ·  2. Choose what it does  ·  3. Add it",
+            foreground="gray",
+        ).pack(anchor=tk.W, pady=(0, 6))
+
+        row = self._labeled_row(form, "Hotkey")
         self.hotkey_input = ttk.Entry(row)
-        self.hotkey_input.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(8, 0))
+        self.hotkey_input.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self._set_placeholder()
         self.hotkey_input.bind("<Button-1>", self._on_hotkey_click)
 
-        row = ttk.Frame(form)
-        row.pack(fill=tk.X, pady=2)
-        ttk.Label(row, text="Funktion:").pack(side=tk.LEFT)
+        row = self._labeled_row(form, "Action")
         self.function_combo = ttk.Combobox(
-            row, values=["Text eingeben", "Auto-Clicker"], state="readonly", width=18
+            row,
+            values=[FUNC_CLICKER, FUNC_TEXT],
+            state="readonly",
+            width=22,
         )
-        self.function_combo.set("Auto-Clicker")
-        self.function_combo.pack(side=tk.LEFT, padx=(8, 0))
+        self.function_combo.set(FUNC_CLICKER)
+        self.function_combo.pack(side=tk.LEFT)
         self.function_combo.bind("<<ComboboxSelected>>", self._on_function_changed)
 
-        self.text_frame = ttk.Frame(form)
-        ttk.Label(self.text_frame, text="Text:").pack(anchor=tk.W)
-        self.text_input = tk.Text(self.text_frame, height=2)
-        self.text_input.pack(fill=tk.X)
+        # Reserved slot so options always sit ABOVE the Add button
+        self.options_host = ttk.Frame(form)
+        self.options_host.pack(fill=tk.X, pady=(4, 0))
 
-        self.clicker_frame = ttk.Frame(form)
-        cps_row = ttk.Frame(self.clicker_frame)
-        cps_row.pack(fill=tk.X, pady=2)
-        ttk.Label(cps_row, text="CPS:").pack(side=tk.LEFT)
+        self.text_frame = ttk.Frame(self.options_host)
+        ttk.Label(self.text_frame, text="Text to type").pack(anchor=tk.W)
+        self.text_input = tk.Text(self.text_frame, height=2, wrap=tk.WORD)
+        self.text_input.pack(fill=tk.X, pady=(2, 0))
+
+        self.clicker_frame = ttk.Frame(self.options_host)
+
+        row = self._labeled_row(self.clicker_frame, "Speed")
         self.cps_var = tk.IntVar(value=5)
-        ttk.Spinbox(cps_row, from_=1, to=1000, textvariable=self.cps_var, width=8).pack(
-            side=tk.LEFT, padx=(8, 12)
+        ttk.Spinbox(
+            row, from_=1, to=1000, textvariable=self.cps_var, width=6
+        ).pack(side=tk.LEFT)
+        ttk.Label(row, text="clicks per second", foreground="gray").pack(
+            side=tk.LEFT, padx=(8, 0)
         )
-        ttk.Label(cps_row, text="Button:").pack(side=tk.LEFT)
-        self.button_combo = ttk.Combobox(
-            cps_row, values=["left", "right", "middle"], state="readonly", width=8
-        )
-        self.button_combo.set("left")
-        self.button_combo.pack(side=tk.LEFT, padx=(8, 0))
 
+        row = self._labeled_row(self.clicker_frame, "Mouse")
+        self.button_combo = ttk.Combobox(
+            row,
+            values=[label for label, _ in BUTTON_OPTIONS],
+            state="readonly",
+            width=10,
+        )
+        self.button_combo.set("Left")
+        self.button_combo.pack(side=tk.LEFT)
+
+        row = self._labeled_row(self.clicker_frame, "Mode")
         self.hold_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(
-            self.clicker_frame,
-            text="Nur halten (klicken solange Taste gedrückt)",
-            variable=self.hold_var,
-        ).pack(anchor=tk.W, pady=(4, 0))
+        self.mode_combo = ttk.Combobox(
+            row,
+            values=[MODE_TOGGLE_SHORT, MODE_HOLD_SHORT],
+            state="readonly",
+            width=10,
+        )
+        self.mode_combo.set(MODE_TOGGLE_SHORT)
+        self.mode_combo.pack(side=tk.LEFT)
+        self.mode_combo.bind("<<ComboboxSelected>>", self._sync_hold_from_mode)
+        self.mode_hint = ttk.Label(self.clicker_frame, text=MODE_TOGGLE, foreground="gray")
+        self.mode_hint.pack(anchor=tk.W, pady=(2, 0))
 
         self.restrict_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(
             form,
-            text="Nur in bestimmten Fenstern",
+            text="Only when certain windows or apps are in the foreground",
             variable=self.restrict_var,
             command=self._toggle_restrict,
-        ).pack(anchor=tk.W, pady=(6, 0))
+        ).pack(anchor=tk.W, pady=(10, 0))
 
         self.restrict_frame = ttk.Frame(form)
         lists = ttk.Frame(self.restrict_frame)
-        lists.pack(fill=tk.X)
+        lists.pack(fill=tk.X, pady=(4, 0))
         left = ttk.Frame(lists)
-        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 4))
+        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 6))
         right = ttk.Frame(lists)
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        ttk.Label(left, text="Fenster").pack(anchor=tk.W)
+        ttk.Label(left, text="Window titles").pack(anchor=tk.W)
         self.allowed_windows_list = tk.Listbox(left, height=3)
-        self.allowed_windows_list.pack(fill=tk.X)
-        ttk.Button(left, text="+ Fenster", command=self.add_allowed_window).pack(
-            side=tk.LEFT, pady=2
+        self.allowed_windows_list.pack(fill=tk.X, pady=(2, 2))
+        win_btns = ttk.Frame(left)
+        win_btns.pack(fill=tk.X)
+        ttk.Button(win_btns, text="Add window…", command=self.add_allowed_window).pack(
+            side=tk.LEFT
         )
-        ttk.Button(left, text="−", command=self.remove_allowed_window).pack(
-            side=tk.LEFT, padx=4, pady=2
+        ttk.Button(win_btns, text="Remove", command=self.remove_allowed_window).pack(
+            side=tk.LEFT, padx=(6, 0)
         )
 
-        ttk.Label(right, text="Prozesse").pack(anchor=tk.W)
+        ttk.Label(right, text="App / process names").pack(anchor=tk.W)
         self.allowed_processes_list = tk.Listbox(right, height=3)
-        self.allowed_processes_list.pack(fill=tk.X)
-        ttk.Button(right, text="+ Prozess", command=self.add_allowed_process).pack(
-            side=tk.LEFT, pady=2
-        )
-        ttk.Button(right, text="−", command=self.remove_allowed_process).pack(
-            side=tk.LEFT, padx=4, pady=2
+        self.allowed_processes_list.pack(fill=tk.X, pady=(2, 2))
+        proc_btns = ttk.Frame(right)
+        proc_btns.pack(fill=tk.X)
+        ttk.Button(
+            proc_btns, text="Add process…", command=self.add_allowed_process
+        ).pack(side=tk.LEFT)
+        ttk.Button(proc_btns, text="Remove", command=self.remove_allowed_process).pack(
+            side=tk.LEFT, padx=(6, 0)
         )
 
-        self.add_btn = ttk.Button(form, text="Hotkey hinzufügen")
-        self.add_btn.pack(pady=8)
+        self.add_btn = ttk.Button(form, text="Add hotkey")
+        self.add_btn.pack(pady=(12, 2))
 
-        list_frame = ttk.LabelFrame(
-            self, text="Aktive Hotkeys (Rechtsklick: Konfigurieren / Löschen)", padding=8
+        list_frame = ttk.LabelFrame(self, text="Your hotkeys", padding=10)
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 0))
+
+        ttk.Label(
+            list_frame,
+            text="Right-click a row to edit or delete · Double-click to edit",
+            foreground="gray",
+        ).pack(anchor=tk.W, pady=(0, 6))
+
+        table_wrap = ttk.Frame(list_frame)
+        table_wrap.pack(fill=tk.BOTH, expand=True)
+
+        cols = ("hotkey", "action", "where", "status")
+        self.hotkey_table = ttk.Treeview(
+            table_wrap, columns=cols, show="headings", height=8
         )
-        list_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
-
-        cols = ("hotkey", "function", "conditions", "status")
-        self.hotkey_table = ttk.Treeview(list_frame, columns=cols, show="headings", height=8)
         self.hotkey_table.heading("hotkey", text="Hotkey")
-        self.hotkey_table.heading("function", text="Funktion")
-        self.hotkey_table.heading("conditions", text="Bedingungen")
+        self.hotkey_table.heading("action", text="What it does")
+        self.hotkey_table.heading("where", text="Where")
         self.hotkey_table.heading("status", text="Status")
-        self.hotkey_table.column("hotkey", width=110)
-        self.hotkey_table.column("function", width=200)
-        self.hotkey_table.column("conditions", width=120)
-        self.hotkey_table.column("status", width=90)
+        self.hotkey_table.column("hotkey", width=100, minwidth=80)
+        self.hotkey_table.column("action", width=280, minwidth=160)
+        self.hotkey_table.column("where", width=100, minwidth=80)
+        self.hotkey_table.column("status", width=80, minwidth=70)
         self.hotkey_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        scroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self.hotkey_table.yview)
+        scroll = ttk.Scrollbar(
+            table_wrap, orient=tk.VERTICAL, command=self.hotkey_table.yview
+        )
         self.hotkey_table.configure(yscrollcommand=scroll.set)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
         self._context_menu = tk.Menu(self, tearoff=0)
-        self._context_menu.add_command(label="Konfigurieren", command=self._configure_selected)
-        self._context_menu.add_command(label="Löschen", command=self._delete_selected)
+        self._context_menu.add_command(label="Edit…", command=self._configure_selected)
+        self._context_menu.add_command(label="Delete", command=self._delete_selected)
         self.hotkey_table.bind("<Button-3>", self._on_right_click)
         self.hotkey_table.bind("<Double-1>", lambda e: self._configure_selected())
 
         self._on_function_changed()
+
+    def _sync_hold_from_mode(self, *_):
+        hold = self.mode_combo.get() == MODE_HOLD_SHORT
+        self.hold_var.set(hold)
+        self.mode_hint.configure(text=MODE_HOLD if hold else MODE_TOGGLE)
 
     def _on_right_click(self, event):
         row = self.hotkey_table.identify_row(event.y)
@@ -169,7 +235,7 @@ class HotkeyTab(ttk.Frame):
         self.hotkey_input.insert(0, PLACEHOLDER)
 
     def _on_function_changed(self, *_):
-        if self.function_combo.get() == "Text eingeben":
+        if self.function_combo.get() == FUNC_TEXT:
             self.clicker_frame.pack_forget()
             self.text_frame.pack(fill=tk.X, pady=2)
         else:
@@ -178,7 +244,7 @@ class HotkeyTab(ttk.Frame):
 
     def _toggle_restrict(self):
         if self.restrict_var.get():
-            self.restrict_frame.pack(fill=tk.X, pady=4)
+            self.restrict_frame.pack(fill=tk.X, before=self.add_btn, pady=(4, 0))
         else:
             self.restrict_frame.pack_forget()
 
@@ -191,7 +257,7 @@ class HotkeyTab(ttk.Frame):
         self.recording_hotkey = True
         self.current_hotkey = []
         self.hotkey_input.delete(0, tk.END)
-        self.hotkey_input.insert(0, "Tasten drücken… (ESC abbrechen)")
+        self.hotkey_input.insert(0, RECORDING_HINT)
         self._press_hook = keyboard.on_press(self._on_key_press)
         self._release_hook = keyboard.on_release(self._on_key_release)
 
@@ -248,15 +314,15 @@ class HotkeyTab(ttk.Frame):
     def _delete_selected(self):
         hotkey = self._selected_hotkey()
         if not hotkey or not self.remove_hotkey_callback:
-            messagebox.showwarning("Warnung", "Bitte Hotkey auswählen.")
+            messagebox.showwarning("Warning", "Please select a hotkey first.")
             return
-        if messagebox.askyesno("Löschen", f"Hotkey „{hotkey}“ wirklich löschen?"):
+        if messagebox.askyesno("Delete", f'Remove hotkey "{hotkey}"?'):
             self.remove_hotkey_callback(hotkey)
 
     def _configure_selected(self):
         hotkey = self._selected_hotkey()
         if not hotkey:
-            messagebox.showwarning("Warnung", "Bitte Hotkey auswählen.")
+            messagebox.showwarning("Warning", "Please select a hotkey first.")
             return
         if not self.adapter:
             return
@@ -266,8 +332,9 @@ class HotkeyTab(ttk.Frame):
             return
         if data.get("type") != "clicker":
             messagebox.showinfo(
-                "Konfigurieren",
-                "CPS und Umschalten/Halten gelten nur für Auto-Clicker.",
+                "Edit",
+                "Speed and mode can only be changed for auto-clicker hotkeys.\n"
+                "To change a text hotkey, delete it and add it again.",
             )
             return
 
@@ -275,90 +342,138 @@ class HotkeyTab(ttk.Frame):
         current_trigger = data.get("trigger", "toggle")
 
         dialog = tk.Toplevel(self)
-        dialog.title(f"Konfigurieren: {hotkey}")
+        dialog.title("Edit auto-clicker")
         dialog.transient(self.winfo_toplevel())
         dialog.grab_set()
         dialog.resizable(False, False)
 
-        frame = ttk.Frame(dialog, padding=12)
+        frame = ttk.Frame(dialog, padding=14)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(frame, text=f"Hotkey: {hotkey} (unveränderlich)").pack(anchor=tk.W, pady=(0, 8))
+        ttk.Label(
+            frame,
+            text=f"Hotkey:  {hotkey}",
+            font=("Segoe UI", 10, "bold"),
+        ).pack(anchor=tk.W)
+        ttk.Label(
+            frame,
+            text="The key combination itself cannot be changed here.",
+            foreground="gray",
+        ).pack(anchor=tk.W, pady=(0, 10))
 
         row = ttk.Frame(frame)
         row.pack(fill=tk.X, pady=4)
-        ttk.Label(row, text="CPS:").pack(side=tk.LEFT)
+        ttk.Label(row, text="Speed", width=8, anchor=tk.W).pack(side=tk.LEFT)
         cps_var = tk.IntVar(value=current_cps)
-        ttk.Spinbox(row, from_=1, to=1000, textvariable=cps_var, width=8).pack(
+        ttk.Spinbox(row, from_=1, to=1000, textvariable=cps_var, width=6).pack(
+            side=tk.LEFT
+        )
+        ttk.Label(row, text="clicks per second", foreground="gray").pack(
             side=tk.LEFT, padx=(8, 0)
         )
 
         row = ttk.Frame(frame)
         row.pack(fill=tk.X, pady=4)
-        ttk.Label(row, text="Modus:").pack(side=tk.LEFT)
+        ttk.Label(row, text="Mode", width=8, anchor=tk.W).pack(side=tk.LEFT)
         trigger_var = tk.StringVar(
-            value="Halten" if current_trigger == "hold" else "Umschalten"
+            value=MODE_HOLD_SHORT if current_trigger == "hold" else MODE_TOGGLE_SHORT
         )
         ttk.Combobox(
             row,
             textvariable=trigger_var,
-            values=["Umschalten", "Halten"],
+            values=[MODE_TOGGLE_SHORT, MODE_HOLD_SHORT],
             state="readonly",
-            width=14,
-        ).pack(side=tk.LEFT, padx=(8, 0))
+            width=10,
+        ).pack(side=tk.LEFT)
+
+        hint = ttk.Label(
+            frame,
+            text=MODE_HOLD if current_trigger == "hold" else MODE_TOGGLE,
+            foreground="gray",
+        )
+        hint.pack(anchor=tk.W, pady=(2, 0))
+
+        def on_mode(_e=None):
+            hint.configure(
+                text=MODE_HOLD if trigger_var.get() == MODE_HOLD_SHORT else MODE_TOGGLE
+            )
+
+        # re-bind via tracing
+        def watch(*_):
+            on_mode()
+
+        trigger_var.trace_add("write", watch)
 
         btns = ttk.Frame(frame)
-        btns.pack(fill=tk.X, pady=(12, 0))
+        btns.pack(fill=tk.X, pady=(14, 0))
 
         def save():
-            trigger = "hold" if trigger_var.get() == "Halten" else "toggle"
+            trigger = "hold" if trigger_var.get() == MODE_HOLD_SHORT else "toggle"
             try:
                 cps = int(cps_var.get())
             except (tk.TclError, ValueError):
-                messagebox.showwarning("Fehler", "CPS muss eine Zahl sein.", parent=dialog)
+                messagebox.showwarning(
+                    "Error", "Speed must be a whole number.", parent=dialog
+                )
                 return
             if cps <= 0:
-                messagebox.showwarning("Fehler", "CPS muss > 0 sein.", parent=dialog)
+                messagebox.showwarning(
+                    "Error", "Speed must be greater than 0.", parent=dialog
+                )
                 return
             if self.configure_hotkey_callback:
                 self.configure_hotkey_callback(hotkey, cps=cps, trigger=trigger)
             dialog.destroy()
 
-        ttk.Button(btns, text="Speichern", command=save).pack(side=tk.RIGHT)
-        ttk.Button(btns, text="Abbrechen", command=dialog.destroy).pack(
+        ttk.Button(btns, text="Save", command=save).pack(side=tk.RIGHT)
+        ttk.Button(btns, text="Cancel", command=dialog.destroy).pack(
             side=tk.RIGHT, padx=(0, 6)
         )
 
         dialog.wait_window()
+
+    @staticmethod
+    def _format_action(data) -> str:
+        if data["type"] == "text":
+            preview = data["data"][:36].replace("\n", " ")
+            if len(data["data"]) > 36:
+                preview += "…"
+            return f'Type "{preview}"'
+        cps = 1000.0 / data["interval"] if data.get("interval") else 0
+        btn = BUTTON_LABELS.get(data.get("button", "left"), "Left")
+        mode = MODE_HOLD_SHORT if data.get("trigger") == "hold" else MODE_TOGGLE_SHORT
+        cps_txt = f"{cps:.0f}" if abs(cps - round(cps)) < 0.05 else f"{cps:.1f}"
+        return f"{btn}-click · {cps_txt}/s · {mode}"
+
+    @staticmethod
+    def _format_status(data, running: bool) -> str:
+        if data["type"] == "text":
+            return "Ready"
+        if running:
+            return "Running"
+        return "Ready"
 
     def update_table(self, hotkeys, running=None):
         if running is None:
             running = set()
         self.hotkey_table.delete(*self.hotkey_table.get_children())
         for hotkey, data in hotkeys.items():
-            if data["type"] == "text":
-                func = f"Text: {data['data'][:40]}"
-                status = "Bereit"
-            else:
-                cps = 1000.0 / data["interval"] if data.get("interval") else 0
-                trigger = data.get("trigger", "toggle")
-                mode = "Halten" if trigger == "hold" else "Umschalten"
-                func = f"Clicker {cps:.1f} CPS / {data.get('button', 'left')} / {mode}"
-                if hotkey in running:
-                    status = "Aktiv"
-                elif trigger == "hold":
-                    status = "Halten"
-                else:
-                    status = "Gestoppt"
             cond = data.get("conditions", {})
-            cond_txt = "Eingeschränkt" if cond.get("window_restriction") else "Immer"
+            where = "Limited" if cond.get("window_restriction") else "Anywhere"
             self.hotkey_table.insert(
-                "", tk.END, values=(hotkey, func, cond_txt, status)
+                "",
+                tk.END,
+                values=(
+                    hotkey,
+                    self._format_action(data),
+                    where,
+                    self._format_status(data, hotkey in running),
+                ),
             )
 
     def get_hotkey_input_text(self):
         text = self.hotkey_input.get().strip()
-        if text in (PLACEHOLDER, "Tasten drücken… (ESC abbrechen)"):
+        if text in (PLACEHOLDER, RECORDING_HINT):
             return ""
         return text
 
@@ -372,16 +487,21 @@ class HotkeyTab(ttk.Frame):
         return int(self.cps_var.get())
 
     def get_button_value(self):
-        return self.button_combo.get()
+        label = self.button_combo.get()
+        return BUTTON_CODES.get(label, "left")
 
     def get_trigger_mode(self):
-        return "hold" if self.hold_var.get() else "toggle"
+        return "hold" if self.mode_combo.get() == MODE_HOLD_SHORT else "toggle"
 
     def clear_inputs(self):
         self._set_placeholder()
         self.text_input.delete("1.0", tk.END)
-        self.function_combo.set("Auto-Clicker")
+        self.function_combo.set(FUNC_CLICKER)
+        self.cps_var.set(5)
+        self.button_combo.set("Left")
+        self.mode_combo.set(MODE_TOGGLE_SHORT)
         self.hold_var.set(False)
+        self.mode_hint.configure(text=MODE_TOGGLE)
         self.restrict_var.set(False)
         self.allowed_windows_list.delete(0, tk.END)
         self.allowed_processes_list.delete(0, tk.END)
@@ -404,11 +524,13 @@ class HotkeyTab(ttk.Frame):
             return
         windows = self.adapter.get_active_windows()
         if not windows:
-            messagebox.showinfo("Info", "Keine Fenster gefunden.")
+            messagebox.showinfo("Info", "No open windows found.")
             return
         choices = [f"{w['title']} ({w['process_name']})" for w in windows.values()]
         title = simpledialog.askstring(
-            "Fenster", "Titel eingeben:\n" + "\n".join(choices[:12])
+            "Add window",
+            "Type part of the window title (examples below):\n\n"
+            + "\n".join(choices[:12]),
         )
         if title:
             self.allowed_windows_list.insert(tk.END, title.split(" (")[0])
@@ -423,10 +545,13 @@ class HotkeyTab(ttk.Frame):
             return
         processes = self.adapter.get_process_list()
         if not processes:
-            messagebox.showinfo("Info", "Keine Prozesse gefunden.")
+            messagebox.showinfo("Info", "No processes found.")
             return
         names = [f"{p['name']} (PID: {p['pid']})" for p in processes[:40]]
-        name = simpledialog.askstring("Prozess", "Name eingeben:\n" + "\n".join(names[:12]))
+        name = simpledialog.askstring(
+            "Add process",
+            "Type the process name (examples below):\n\n" + "\n".join(names[:12]),
+        )
         if name:
             self.allowed_processes_list.insert(tk.END, name.split(" (")[0])
 

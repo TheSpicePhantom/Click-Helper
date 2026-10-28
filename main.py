@@ -124,9 +124,9 @@ def main():
         except Exception:
             pass
         try:
-            messagebox.showerror("Fehler", f"Start fehlgeschlagen:\n{e}")
+            messagebox.showerror("Error", f"Startup failed:\n{e}")
         except Exception:
-            print(f"Fehler: {e}")
+            print(f"Error: {e}")
         sys.exit(1)
 
 

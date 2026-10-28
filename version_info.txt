@@ -14,7 +14,7 @@ VSVersionInfo(
       StringTable(
         u'040704B0',
         [StringStruct(u'CompanyName', u'Click Helper'),
-         StringStruct(u'FileDescription', u'Click Helper – schlanker Auto-Clicker'),
+         StringStruct(u'FileDescription', u'Click Helper – lightweight auto-clicker'),
          StringStruct(u'FileVersion', u'1.1.0'),
          StringStruct(u'InternalName', u'ClickHelper'),
          StringStruct(u'LegalCopyright', u'Copyright (c) 2026 Click Helper'),
